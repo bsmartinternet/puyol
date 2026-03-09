@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      Role     @default(VIEWER)
+  createdAt DateTime @default(now())
+  sends     Send[]   @relation("SendOwner")
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+model Client {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  notes     String?
+  createdAt DateTime   @default(now())
+  campaigns Campaign[]
+  sends     Send[]
+}
+
+model Campaign {
+  id        String   @id @default(cuid())
+  name      String
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id])
+  vertical  String?
+  geo       String?
+  notes     String?
+  createdAt DateTime @default(now())
+  sends     Send[]
+}
+
+model Send {
+  id           String     @id @default(cuid())
+  externalId   String     @unique
+  source       String     @default("inboxroad")
+  sentAt       DateTime?
+  subject      String?
+  fromDomain   String?
+  esp          String?
+  isp          String?
+  volume       Int        @default(0)
+  delivered    Int        @default(0)
+  opens        Int        @default(0)
+  clicks       Int        @default(0)
+  bounces      Int        @default(0)
+  unsubscribes Int        @default(0)
+  clientId     String?
+  client       Client?    @relation(fields: [clientId], references: [id])
+  campaignId   String?
+  campaign     Campaign?  @relation(fields: [campaignId], references: [id])
+  vertical     String?
+  geo          String?
+  leads        Int        @default(0)
+  revenue      Decimal    @default(0) @db.Decimal(12, 2)
+  cost         Decimal    @default(0) @db.Decimal(12, 2)
+  profit       Decimal    @default(0) @db.Decimal(12, 2)
+  status       SendStatus @default(PENDING)
+  ownerId      String?
+  owner        User?      @relation("SendOwner", fields: [ownerId], references: [id])
+  notes        String?
+  tags         String[]
+  openRate     Float?
+  ctr          Float?
+  erpm         Float?
+  rawData      Json?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  changeLog    ChangeLog[]
+}
+
+enum SendStatus {
+  PENDING
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ERROR
+}
+
+model SyncLog {
+  id           String     @id @default(cuid())
+  source       String     @default("inboxroad")
+  status       SyncStatus
+  itemsSynced  Int        @default(0)
+  itemsNew     Int        @default(0)
+  itemsUpdated Int        @default(0)
+  error        String?
+  startedAt    DateTime   @default(now())
+  finishedAt   DateTime?
+}
+
+enum SyncStatus {
+  RUNNING
+  SUCCESS
+  ERROR
+}
+
+model ChangeLog {
+  id        String   @id @default(cuid())
+  sendId    String
+  send      Send     @relation(fields: [sendId], references: [id])
+  field     String
+  oldValue  String?
+  newValue  String?
+  changedBy String?
+  changedAt DateTime @default(now())
+}
